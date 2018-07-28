@@ -1,0 +1,29 @@
+{
+	"users" : [
+		{
+			"user-id" : 1,
+			"accounts" : [
+				{
+					"account" : "admin",
+					"password" : "admin",
+					"loggedIn" : false
+				},
+				{
+					"account" : "test",
+					"password" : "testing123"
+					"loggedIn" : true
+				} 
+			]
+		},
+		{
+			"user-id" : 2,
+			"accounts" : [
+				{
+					"account" : "john",
+					"password" : "pizza"
+					"loggedIn" : false
+				}
+			]
+		}	
+	]
+}
