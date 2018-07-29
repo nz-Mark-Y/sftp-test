@@ -3,6 +3,9 @@ import java.net.*;
 
 public class SFTPClient {
 	
+	/* 
+	 * Constructor
+	 */
 	public SFTPClient(int port) throws Exception {
 		String toServer;
 		String fromServer;

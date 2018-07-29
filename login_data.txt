@@ -1,29 +1,35 @@
 {
-	"users" : [
-		{
-			"user-id" : 1,
-			"accounts" : [
-				{
-					"account" : "admin",
-					"password" : "admin",
-					"loggedIn" : false
+	"users": [{
+			"user-id": 1,
+			"password": "admin",
+			"accounts": [{
+					"account": "admin"
 				},
 				{
-					"account" : "test",
-					"password" : "testing123"
-					"loggedIn" : true
-				} 
-			]
+					"account": "test"
+			}]
 		},
 		{
-			"user-id" : 2,
-			"accounts" : [
-				{
-					"account" : "john",
-					"password" : "pizza"
-					"loggedIn" : false
-				}
-			]
+			"user-id": 2,
+			"password": "pizza",
+			"accounts": [{
+				"account": "john"
+			}]
+		},
+		{
+			"user-id": 3,
+			"accounts": []
+		},
+		{
+			"user-id": 4,
+			"accounts": [{
+				"account": "debug"
+			}]
+		},
+		{
+			"user-id": 5,
+			"password" : "password",
+			"accounts": []
 		}	
 	]
 }
