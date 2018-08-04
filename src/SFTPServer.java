@@ -69,6 +69,8 @@ public class SFTPServer {
 					response = LISTCommand(parameters);
 				} else if (command.equals("CDIR")) {
 					response = CDIRCommand(parameters);
+				} else if (command.equals("KILL")) {
+					response = KILLCommand(parameters);
 				} else {
 					response = "-unknown command";
 				}
@@ -283,9 +285,9 @@ public class SFTPServer {
 	 * Handles the CDIR command 
 	 */
 	public String CDIRCommand(String newDir) {
-		if (loginState == 0) { // no userID
+		if (loginState == 0) { 
 			return "-Can’t connect to directory because: No UserID";
-		} else { // logged in
+		} else { 
 			String result = listDir(newDir, false);
 			if (result.equals("-Directory path doesn't exist")) {
 				return "-Can’t connect to directory because: Directory doesn't exist";
@@ -294,10 +296,30 @@ public class SFTPServer {
 			if (loginState == 1) {				
 				currentDir = newDir;
 				return "+!Changed working dir to " + newDir;
-			} else { // user id supplied, needs pass/acct
+			} else { 
 				requestedDir = newDir;
 				return "+directory ok, send account/password";
 			}
+		}
+	}
+	
+	/*
+	 * Handles the KILL command 
+	 */
+	public String KILLCommand(String fileSpec) {
+		if (loginState == 1) { 
+			File path = new File(currentDir + "/" + fileSpec);
+			if (path.exists()) {
+				if (path.delete()) {
+					return "+" + fileSpec + " deleted";
+				} else {
+					return "-Not deleted because of an unknown error";
+				}
+			} else {
+				return "-Not deleted because file doesn't exist";
+			}
+		} else { 
+			return "-Not deleted because client is not logged in";
 		}
 	}
 }
