@@ -2,17 +2,19 @@ import java.io.*;
 import java.net.*;
 
 public class SFTPServer {
-
-	private String clientInput;
+	
 	private JSONHandler loginFileHandler;
 	private int loginState = 0; // 0 = not logged in, 1 = logged in, 2 = supplied user id, 3 = supplied account name, 4 = password correct, but no account name
 	private int loggedInUserID = 0;
 	private String loggedInAccount = null;
+	private int fileType = 1; // 0 = Ascii, 1 = Binary, 2 = Continuous
 	
 	/* 
 	 * Constructor
 	 */
 	public SFTPServer(int port) throws Exception {
+		String clientInput;
+		String parameters;
 		String command;
 		String response;
 		boolean open = true;
@@ -36,15 +38,27 @@ public class SFTPServer {
 			if (command.equals("DONE")) {
 				open = false;
 				response = "+";
-			} else if (command.equals("USER")) {
-				response = USERCommand();
-			} else if (command.equals("ACCT")) {
-				response = ACCTCommand();
-			} else if (command.equals("PASS")) {
-				response = PASSCommand();
 			} else {
-				response = "-unknown command";
-			}
+				// Get the parameters, truncate off the first 5 characters
+				try {
+					parameters = clientInput.substring(5, clientInput.length());
+				} catch (Exception e) {
+					outToClient.writeBytes("-unknown command \n");
+					continue;
+				}
+				
+				if (command.equals("USER")) {
+					response = USERCommand(parameters);
+				} else if (command.equals("ACCT")) {
+					response = ACCTCommand(parameters);
+				} else if (command.equals("PASS")) {
+					response = PASSCommand(parameters);
+				} else if (command.equals("TYPE")) {
+						response = TYPECommand(parameters);
+				} else {
+					response = "-unknown command";
+				}
+			} 
 
 			// Write response
 			outToClient.writeBytes(response + "\n");
@@ -56,17 +70,10 @@ public class SFTPServer {
 	/* 
 	 * Handles the USER command.
 	 */
-	public String USERCommand() {
-		int userID;
+	public String USERCommand(String userID_string) {
+		int userID = Integer.parseInt(userID_string);
 		int status;
-		
-		// Get the user id (i.e truncate off the first 5 characters)
-		try {
-			userID = Integer.parseInt(clientInput.substring(5, clientInput.length()));
-		} catch (Exception e) {
-			return "-unknown command";
-		}
-		
+	
 		// Check login data for that user id
 		status = loginFileHandler.checkUserID(userID);
 		
@@ -89,8 +96,7 @@ public class SFTPServer {
 	/* 
 	 * Handles the ACCT command.
 	 */
-	public String ACCTCommand() {
-		String account;
+	public String ACCTCommand(String account) {
 		int status;
 		
 		// If already logged in, no need for account
@@ -101,13 +107,6 @@ public class SFTPServer {
 		// If not logged in, and no user id has been specified
 		if (loginState == 0) {
 			return "-Invalid account, try again";
-		}
-		
-		// Get the account (i.e truncate off the first 5 characters)
-		try {
-			account = clientInput.substring(5, clientInput.length());
-		} catch (Exception e) {
-			return "-unknown command";
 		}
 		
 		// Check login data for that account
@@ -137,8 +136,7 @@ public class SFTPServer {
 	/* 
 	 * Handles the PASS command.
 	 */
-	public String PASSCommand() {
-		String password;
+	public String PASSCommand(String password) {
 		int status;
 		
 		// If already logged in, no need for password
@@ -149,13 +147,6 @@ public class SFTPServer {
 		// If not logged in, and no user id has been specified
 		if (loginState == 0) {
 			return "-Wrong password, try again";
-		}
-		
-		// Get the  password (i.e truncate off the first 5 characters)
-		try {
-			password = clientInput.substring(5, clientInput.length());
-		} catch (Exception e) {
-			return "-unknown command";
 		}
 		
 		// Check login data for that account
@@ -170,6 +161,28 @@ public class SFTPServer {
 		} else {
 			loginState = 1;
 			return "!Logged in";
+		}
+	}
+	
+	/*
+	 * Handles the TYPE command 
+	 */
+	public String TYPECommand(String type) {
+		if (loginState == 1) {
+			if (type.equals("A")) {
+				fileType = 0;
+				return "+Using Ascii mode";
+			} else if (type.equals("B")) {
+				fileType = 1;
+				return "+Using Binary mode";
+			} else if (type.equals("C")) {
+				fileType = 2;
+				return "+Using Continuous mode";
+			} else {
+				return "-Type not valid";
+			}
+		} else {
+			return "-Please Login";
 		}
 	}
 }

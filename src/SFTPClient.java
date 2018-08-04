@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.*;
 
 public class SFTPClient {
+	private int fileType = 1; // 0 = Ascii, 1 = Binary, 2 = Continuous
 	
 	/* 
 	 * Constructor
@@ -9,6 +10,8 @@ public class SFTPClient {
 	public SFTPClient(int port) throws Exception {
 		String toServer;
 		String fromServer;
+		String command;
+		String parameters;
 		boolean open = true;
 		
 		Socket clientSocket = new Socket("localhost", port);
@@ -29,8 +32,19 @@ public class SFTPClient {
 			
 			System.out.println("FROM SERVER: " + fromServer);	
 			
-			if (toServer.equals("DONE")) {
-				open = false;
+			command = toServer.substring(0, Math.min(toServer.length(), 4));
+			
+			if (fromServer.substring(0, 1).equals("+")) {
+				if (command.equals("DONE")) {
+					open = false;
+				} else {
+					parameters = toServer.substring(5, toServer.length());
+					if (command.equals("TYPE")) {			
+						if (parameters.equals("A")) { fileType = 0; } 
+						else if (parameters.equals("B")) { fileType = 1; } 
+						else if (parameters.equals("C")) {fileType = 2; }
+					}
+				}
 			}
 		}
 		

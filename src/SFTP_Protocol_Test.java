@@ -2,7 +2,7 @@
 public class SFTP_Protocol_Test {
 
 	public static void main(String argv[]) {
-		int port = 128;
+		int port = 704;
 		
 		Thread serverThread = new Thread(){
 			public void run(){
