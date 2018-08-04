@@ -18,20 +18,21 @@ public class SFTPClient {
 		clientSocket.setReuseAddress(true);
 		clientSocket.setKeepAlive(true);
 		
-		DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
+		PrintWriter outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
 		BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
+		fromServer = inFromServer.readLine();
+		System.out.println("FROM SERVER: " + fromServer);	
 
 		while(open) {
 			System.out.println("\nTO SERVER:");
 			
 			toServer = inFromUser.readLine();
 			
-			outToServer.writeBytes(toServer + '\n');
+			outToServer.println(toServer + "\0");
 			fromServer = inFromServer.readLine();
 			
 			System.out.println("FROM SERVER: " + fromServer);	
-			
 			command = toServer.substring(0, Math.min(toServer.length(), 4));
 			
 			if (fromServer.substring(0, 1).equals("+")) {

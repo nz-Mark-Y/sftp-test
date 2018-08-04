@@ -3,6 +3,7 @@ import java.net.*;
 
 public class SFTPServer {
 	
+	private boolean activeServer = true;
 	private JSONHandler loginFileHandler;
 	private int loginState = 0; // 0 = not logged in, 1 = logged in, 2 = supplied user id, 3 = supplied account name, 4 = password correct, but no account name
 	private int loggedInUserID = 0;
@@ -27,7 +28,13 @@ public class SFTPServer {
 		Socket connectionSocket = welcomeSocket.accept();
 		
 		BufferedReader inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-		DataOutputStream outToClient = new DataOutputStream(connectionSocket.getOutputStream());
+		PrintWriter outToClient = new PrintWriter(connectionSocket.getOutputStream(), true);
+		
+		if (activeServer) {
+			outToClient.println("+UoA-725 SFTP Service \0");
+		} else {
+			outToClient.println("-UoA-725 Out to Lunch \0");
+		}
 		
 		while(open) {
 			// Get first 4 characters - this is the command
@@ -41,9 +48,9 @@ public class SFTPServer {
 			} else {
 				// Get the parameters, truncate off the first 5 characters
 				try {
-					parameters = clientInput.substring(5, clientInput.length());
+					parameters = clientInput.substring(5, clientInput.length()-1);
 				} catch (Exception e) {
-					outToClient.writeBytes("-unknown command \n");
+					outToClient.println("-unknown command \0");
 					continue;
 				}
 				
@@ -61,7 +68,7 @@ public class SFTPServer {
 			} 
 
 			// Write response
-			outToClient.writeBytes(response + "\n");
+			outToClient.println(response + "\0");
 		}
 		
 		welcomeSocket.close();
@@ -71,8 +78,14 @@ public class SFTPServer {
 	 * Handles the USER command.
 	 */
 	public String USERCommand(String userID_string) {
-		int userID = Integer.parseInt(userID_string);
+		int userID; 
 		int status;
+		
+		try {
+			userID = Integer.parseInt(userID_string);
+		} catch (Exception e) {
+			return "-Invalid user-id, try again";
+		}
 	
 		// Check login data for that user id
 		status = loginFileHandler.checkUserID(userID);
