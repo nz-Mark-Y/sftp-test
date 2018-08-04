@@ -22,14 +22,12 @@ public class SFTPServer {
 		// Open socket for receiving
 		ServerSocket welcomeSocket = new ServerSocket(port);
 		welcomeSocket.setReuseAddress(true);
+		Socket connectionSocket = welcomeSocket.accept();
+		
+		BufferedReader inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
+		DataOutputStream outToClient = new DataOutputStream(connectionSocket.getOutputStream());
 		
 		while(open) {
-			Socket connectionSocket = welcomeSocket.accept();
-			
-			// Read input
-			BufferedReader inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-			DataOutputStream outToClient = new DataOutputStream(connectionSocket.getOutputStream());
-			
 			// Get first 4 characters - this is the command
 			clientInput = inFromClient.readLine();
 			command = clientInput.substring(0, Math.min(clientInput.length(), 4));

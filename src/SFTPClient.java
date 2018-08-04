@@ -11,25 +11,29 @@ public class SFTPClient {
 		String fromServer;
 		boolean open = true;
 		
+		Socket clientSocket = new Socket("localhost", port);
+		clientSocket.setReuseAddress(true);
+		clientSocket.setKeepAlive(true);
+		
+		DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
+		BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+		BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
+
 		while(open) {
 			System.out.println("\nTO SERVER:");
 			
-			BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
-			Socket clientSocket = new Socket("localhost", port);
-			clientSocket.setReuseAddress(true);
-			DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-			
-			BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			toServer = inFromUser.readLine();
+			
 			outToServer.writeBytes(toServer + '\n');
 			fromServer = inFromServer.readLine();
 			
-			System.out.println("FROM SERVER: " + fromServer);
-			clientSocket.close();
+			System.out.println("FROM SERVER: " + fromServer);	
 			
 			if (toServer.equals("DONE")) {
 				open = false;
 			}
 		}
+		
+		clientSocket.close();
 	}
 }
