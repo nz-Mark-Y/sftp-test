@@ -14,9 +14,11 @@ public class SFTPClient {
 		String parameters;
 		boolean open = true;
 		
+		int letter;
+		StringBuilder sb = new StringBuilder();
+		
 		Socket clientSocket = new Socket("localhost", port);
 		clientSocket.setReuseAddress(true);
-		clientSocket.setKeepAlive(true);
 		
 		PrintWriter outToServer = new PrintWriter(clientSocket.getOutputStream(), true);
 		BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -28,13 +30,22 @@ public class SFTPClient {
 			System.out.println("\nTO SERVER:");
 			
 			toServer = inFromUser.readLine();
-			
 			outToServer.println(toServer + "\0");
-			fromServer = inFromServer.readLine();
+			
+			while (true) {
+				letter = inFromServer.read();
+				sb.append((char) letter);
+				if (letter == 0) {
+					inFromServer.readLine();
+					break;
+				}
+			}
+			fromServer = sb.toString();
+			sb.setLength(0);
 			
 			System.out.println("FROM SERVER: " + fromServer);	
 			command = toServer.substring(0, Math.min(toServer.length(), 4));
-			
+
 			if (fromServer.substring(0, 1).equals("+")) {
 				if (command.equals("DONE")) {
 					open = false;

@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.util.Date;
 
 public class SFTPServer {
 	
@@ -9,6 +10,7 @@ public class SFTPServer {
 	private int loggedInUserID = 0;
 	private String loggedInAccount = null;
 	private int fileType = 1; // 0 = Ascii, 1 = Binary, 2 = Continuous
+	private String currentDir = "C:/";
 	
 	/* 
 	 * Constructor
@@ -31,9 +33,9 @@ public class SFTPServer {
 		PrintWriter outToClient = new PrintWriter(connectionSocket.getOutputStream(), true);
 		
 		if (activeServer) {
-			outToClient.println("+UoA-725 SFTP Service \0");
+			outToClient.println("+UoA-725 SFTP Service\0");
 		} else {
-			outToClient.println("-UoA-725 Out to Lunch \0");
+			outToClient.println("-UoA-725 Out to Lunch\0");
 		}
 		
 		while(open) {
@@ -50,7 +52,7 @@ public class SFTPServer {
 				try {
 					parameters = clientInput.substring(5, clientInput.length()-1);
 				} catch (Exception e) {
-					outToClient.println("-unknown command \0");
+					outToClient.println("-unknown command\0");
 					continue;
 				}
 				
@@ -61,7 +63,9 @@ public class SFTPServer {
 				} else if (command.equals("PASS")) {
 					response = PASSCommand(parameters);
 				} else if (command.equals("TYPE")) {
-						response = TYPECommand(parameters);
+					response = TYPECommand(parameters);
+				} else if (command.equals("LIST")) {
+					response = LISTCommand(parameters);
 				} else {
 					response = "-unknown command";
 				}
@@ -197,5 +201,65 @@ public class SFTPServer {
 		} else {
 			return "-Please Login";
 		}
+	}
+	
+	/*
+	 * Handles the LIST command 
+	 */
+	public String LISTCommand(String parameters) {
+		String format;
+		String path;
+		
+		if (loginState == 1) {
+			try {
+				format = parameters.substring(0, 1);
+				if (parameters.length() < 3) {
+					path = currentDir;
+				} else {
+					path = parameters.substring(2, parameters.length());
+				}
+			} catch (Exception e) {
+				return "-Format or directory not valid";
+			}
+			
+			if (format.equals("F")) {
+				return listDir(path, false);
+			} else if (format.equals("V")) {
+				return listDir(path, true);
+			} else {
+				return "-Format not valid";
+			}
+		} else {
+			return "-Please Login";
+		}
+	}
+	
+	/*
+	 * Helper function for LISTCommand()
+	 */
+	private String listDir(String path_string, boolean verbose) {
+		String output = "";
+		
+		File path = new File(path_string);
+		try {
+			File[] files = path.listFiles();
+			output = output + "+" + path_string + "\r\n";
+			for (File file : files) {
+				output = output + file.getName();
+				if (verbose) {
+					if (file.isFile()) {
+						output = output + "\t\t File";
+					} else {
+						output = output + "\t\t Folder";
+					}
+					output = output + "\t\t Size: " + file.length() +  " B \t\t Last Modified: " + new Date(file.lastModified());
+				}
+				output = output + "\r\n";
+			}
+		} catch (Exception e) {
+			return "-" + e.getMessage();
+		}
+		
+		return output;
 	}
 }
