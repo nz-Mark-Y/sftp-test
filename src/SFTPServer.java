@@ -200,15 +200,15 @@ public class SFTPServer {
 	 * Handles the TYPE command 
 	 */
 	public String TYPECommand(String type) {
-		if (loginState == 1) {
+		if (loginState == 1) { // Check Login
 			if (type.equals("A")) {
-				fileType = 0;
+				fileType = 0; // Switch file type
 				return "+Using Ascii mode";
 			} else if (type.equals("B")) {
-				fileType = 1;
+				fileType = 1; // Switch file type
 				return "+Using Binary mode";
 			} else if (type.equals("C")) {
-				fileType = 2;
+				fileType = 2; // Switch file type
 				return "+Using Continuous mode";
 			} else {
 				return "-Type not valid";
@@ -225,9 +225,9 @@ public class SFTPServer {
 		String format;
 		String path;
 		
-		if (loginState == 1) {
+		if (loginState == 1) { // Check the login
 			try {
-				format = parameters.substring(0, 1);
+				format = parameters.substring(0, 1); // Split into verbose flag and path
 				if (parameters.length() < 3) {
 					path = currentDir;
 				} else {
@@ -237,7 +237,7 @@ public class SFTPServer {
 				return "-Format or directory not valid";
 			}
 			
-			if (format.equals("F")) {
+			if (format.equals("F")) { // Call listDir()
 				return listDir(path, false);
 			} else if (format.equals("V")) {
 				return listDir(path, true);
@@ -255,27 +255,27 @@ public class SFTPServer {
 	private String listDir(String pathString, boolean verbose) {
 		String output = "";
 		
-		File path = new File(pathString);
+		File path = new File(pathString); // Create a path
 		try {
-			File[] files = path.listFiles();
-			output = output + "+" + pathString + "\r\n";
+			File[] files = path.listFiles(); // List all files
+			output = output + "+" + pathString + "\r\n"; // Append directory name
 			for (File file : files) {
-				output = output + file.getName();
+				output = output + file.getName(); // Append file/folder names
 				if (verbose) {
-					if (file.isFile()) {
-						output = output + "\t\t File";
+					if (file.isFile()) { // Append if it is a file or folder
+						output = output + "\t\t File"; 
 					} else {
 						output = output + "\t\t Folder";
 					}
-					output = output + "\t\t Size: " + file.length() +  " B \t\t Last Modified: " + new Date(file.lastModified());
+					output = output + "\t\t Size: " + file.length() +  " B \t\t Last Modified: " + new Date(file.lastModified()); // Append size and date
 				}
 				output = output + "\r\n";
 			}
 		} catch (Exception e) {
-			if (e.getMessage() == null) {
+			if (e.getMessage() == null) { // Path doesn't exist
 				return "-Directory path doesn't exist";
 			}
-			return "-" + e.getMessage();
+			return "-" + e.getMessage(); // Some other error
 		}
 		
 		return output;
@@ -285,18 +285,18 @@ public class SFTPServer {
 	 * Handles the CDIR command 
 	 */
 	public String CDIRCommand(String newDir) {
-		if (loginState == 0) { 
+		if (loginState == 0) { // Check if a userID is specified
 			return "-Can’t connect to directory because: No UserID";
 		} else { 
 			String result = listDir(newDir, false);
-			if (result.equals("-Directory path doesn't exist")) {
+			if (result.equals("-Directory path doesn't exist")) { // Check if the directory exists, reuses listDir()
 				return "-Can’t connect to directory because: Directory doesn't exist";
 			}
 
-			if (loginState == 1) {				
+			if (loginState == 1) { // User is logged in, can change directory		
 				currentDir = newDir;
 				return "+!Changed working dir to " + newDir;
-			} else { 
+			} else { // User is not logged in, flag the directory that the user wants
 				requestedDir = newDir;
 				return "+directory ok, send account/password";
 			}
@@ -308,9 +308,9 @@ public class SFTPServer {
 	 */
 	public String KILLCommand(String fileSpec) {
 		if (loginState == 1) { 
-			File path = new File(currentDir + "/" + fileSpec);
-			if (path.exists()) {
-				if (path.delete()) {
+			File path = new File(currentDir + "/" + fileSpec); // Local files only. Absolute paths don't work
+			if (path.exists()) { // Check if file exists
+				if (path.delete()) { // Attempt to delete file
 					return "+" + fileSpec + " deleted";
 				} else {
 					return "-Not deleted because of an unknown error";
