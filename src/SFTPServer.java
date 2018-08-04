@@ -11,6 +11,7 @@ public class SFTPServer {
 	private String loggedInAccount = null;
 	private int fileType = 1; // 0 = Ascii, 1 = Binary, 2 = Continuous
 	private String currentDir = "C:/";
+	private String requestedDir = null;
 	
 	/* 
 	 * Constructor
@@ -66,6 +67,8 @@ public class SFTPServer {
 					response = TYPECommand(parameters);
 				} else if (command.equals("LIST")) {
 					response = LISTCommand(parameters);
+				} else if (command.equals("CDIR")) {
+					response = CDIRCommand(parameters);
 				} else {
 					response = "-unknown command";
 				}
@@ -146,6 +149,11 @@ public class SFTPServer {
 		} else {
 			loginState = 1;
 			loggedInAccount = account;
+			if (requestedDir != null) {
+				String output = CDIRCommand(requestedDir);
+				requestedDir = null;
+				return output;
+			}
 			return "!Account valid, logged-in";
 		}
 	}
@@ -177,6 +185,11 @@ public class SFTPServer {
 			return "+Send account";
 		} else {
 			loginState = 1;
+			if (requestedDir != null) {
+				String output = CDIRCommand(requestedDir);
+				requestedDir = null;
+				return output;
+			}
 			return "!Logged in";
 		}
 	}
@@ -237,13 +250,13 @@ public class SFTPServer {
 	/*
 	 * Helper function for LISTCommand()
 	 */
-	private String listDir(String path_string, boolean verbose) {
+	private String listDir(String pathString, boolean verbose) {
 		String output = "";
 		
-		File path = new File(path_string);
+		File path = new File(pathString);
 		try {
 			File[] files = path.listFiles();
-			output = output + "+" + path_string + "\r\n";
+			output = output + "+" + pathString + "\r\n";
 			for (File file : files) {
 				output = output + file.getName();
 				if (verbose) {
@@ -257,9 +270,34 @@ public class SFTPServer {
 				output = output + "\r\n";
 			}
 		} catch (Exception e) {
+			if (e.getMessage() == null) {
+				return "-Directory path doesn't exist";
+			}
 			return "-" + e.getMessage();
 		}
 		
 		return output;
+	}
+	
+	/*
+	 * Handles the CDIR command 
+	 */
+	public String CDIRCommand(String newDir) {
+		if (loginState == 0) { // no userID
+			return "-Can’t connect to directory because: No UserID";
+		} else { // logged in
+			String result = listDir(newDir, false);
+			if (result.equals("-Directory path doesn't exist")) {
+				return "-Can’t connect to directory because: Directory doesn't exist";
+			}
+
+			if (loginState == 1) {				
+				currentDir = newDir;
+				return "+!Changed working dir to " + newDir;
+			} else { // user id supplied, needs pass/acct
+				requestedDir = newDir;
+				return "+directory ok, send account/password";
+			}
+		}
 	}
 }
