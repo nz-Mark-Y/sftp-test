@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
 import java.util.Date;
 
 public class SFTPServer {
@@ -13,6 +14,9 @@ public class SFTPServer {
 	private String currentDir = "C:/";
 	private String requestedDir = null;
 	private String renameFile = null;
+	private String fileToSend = null;
+	
+	private OutputStream outputStream;
 	
 	/* 
 	 * Constructor
@@ -33,6 +37,7 @@ public class SFTPServer {
 		
 		BufferedReader inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
 		PrintWriter outToClient = new PrintWriter(connectionSocket.getOutputStream(), true);
+		outputStream = connectionSocket.getOutputStream();
 		
 		if (activeServer) {
 			outToClient.println("+UoA-725 SFTP Service\0");
@@ -49,6 +54,10 @@ public class SFTPServer {
 			if (command.equals("DONE")) {
 				open = false;
 				response = "+";
+			} else if (command.equals("SEND")) {
+				response = SENDCommand();
+			} else if (command.equals("STOP")) {
+				response = STOPCommand();	
 			} else {
 				// Get the parameters, truncate off the first 5 characters
 				try {
@@ -76,6 +85,8 @@ public class SFTPServer {
 					response = NAMECommand(parameters);
 				} else if (command.equals("TOBE")) {
 					response = TOBECommand(parameters);
+				} else if (command.equals("RETR")) {
+					response = RETRCommand(parameters);
 				} else {
 					response = "-unknown command";
 				}
@@ -363,5 +374,48 @@ public class SFTPServer {
 		} else { 
 			return "-Please log in";
 		}
+	}
+	
+	/*
+	 * Handles the RETR command 
+	 */
+	public String RETRCommand(String fileSpec) {
+		if (loginState == 1) { 
+			File path = new File(currentDir + "/" + fileSpec); // Local files only. Absolute paths don't work
+			if (path.exists()) { // Check if file exists
+				fileToSend = fileSpec;
+				return Integer.toString((int) path.length());
+			} else {
+				return "-File doesn't exist";
+			}
+		} else { 
+			return "-Please log in";
+		}
+	}
+	
+	/*
+	 * Handles the SEND command
+	 */
+	public String SENDCommand() {
+		if (fileToSend != null) {
+			File path = new File(currentDir + "/" + fileToSend); // Get the file
+			try {
+				byte[] fileContent = Files.readAllBytes(path.toPath()); // Convert it to a byte array
+				outputStream.write(fileContent); // Write the byte array to the output stream
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return "";
+		} else {
+			return "-No File Specified";
+		}
+	}
+	
+	/*
+	 * Handles the STOP command
+	 */
+	public String STOPCommand() {
+		fileToSend = null;
+		return "+ok, RETR aborted";
 	}
 }
