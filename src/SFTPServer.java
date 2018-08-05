@@ -12,6 +12,7 @@ public class SFTPServer {
 	private int fileType = 1; // 0 = Ascii, 1 = Binary, 2 = Continuous
 	private String currentDir = "C:/";
 	private String requestedDir = null;
+	private String renameFile = null;
 	
 	/* 
 	 * Constructor
@@ -71,6 +72,10 @@ public class SFTPServer {
 					response = CDIRCommand(parameters);
 				} else if (command.equals("KILL")) {
 					response = KILLCommand(parameters);
+				} else if (command.equals("NAME")) {
+					response = NAMECommand(parameters);
+				} else if (command.equals("TOBE")) {
+					response = TOBECommand(parameters);
 				} else {
 					response = "-unknown command";
 				}
@@ -320,6 +325,43 @@ public class SFTPServer {
 			}
 		} else { 
 			return "-Not deleted because client is not logged in";
+		}
+	}
+	
+	/*
+	 * Handles the NAME command 
+	 */
+	public String NAMECommand(String fileSpec) {
+		if (loginState == 1) { 
+			File path = new File(currentDir + "/" + fileSpec); // Local files only. Absolute paths don't work
+			if (path.exists()) { // Check if file exists
+				renameFile = fileSpec;
+				return "+File exists";
+			} else {
+				renameFile = null;
+				return "-Can’t find " + fileSpec;
+			}
+		} else { 
+			return "-Please log in";
+		}
+	}
+	
+	/*
+	 * Handles the TOBE command 
+	 */
+	public String TOBECommand(String fileSpec) {
+		if (loginState == 1) {
+			if (renameFile == null) {
+				return "-File wasn’t renamed because NAME not specified";
+			}
+			File path = new File(currentDir + "/" + renameFile); // Local files only. Absolute paths don't work
+			File newPath = new File(currentDir + "/" + fileSpec);
+			if (path.renameTo(newPath)) {
+				return "+" + renameFile + " renamed to " + fileSpec;
+			}
+			return "-File wasn't renamed due to an unknown error";
+		} else { 
+			return "-Please log in";
 		}
 	}
 }
