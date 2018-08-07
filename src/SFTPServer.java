@@ -4,8 +4,11 @@ import java.nio.file.Files;
 import java.util.Date;
 
 public class SFTPServer {
+	// Constants
+	private static final boolean activeServer = true;
+	private static final boolean supportsGenerations = true;
 	
-	private boolean activeServer = true;
+	// Server Variables
 	private JSONHandler loginFileHandler;
 	private int loginState = 0; // 0 = not logged in, 1 = logged in, 2 = supplied user id, 3 = supplied account name, 4 = password correct, but no account name
 	private int loggedInUserID = 0;
@@ -15,8 +18,9 @@ public class SFTPServer {
 	private String requestedDir = null;
 	private String renameFile = null;
 	private String fileToSend = null;
-	
 	private OutputStream outputStream;
+	private int storeType = 0; // 0 = no store requested, 1 = new file requested, 2 = new generation requested, 3 = overwrite file requested, 4 = append to file requested
+	private String storeName = null;
 	
 	/* 
 	 * Constructor
@@ -87,6 +91,8 @@ public class SFTPServer {
 					response = TOBECommand(parameters);
 				} else if (command.equals("RETR")) {
 					response = RETRCommand(parameters);
+				} else if (command.equals("STOR")) {
+					response = STORCommand(parameters);
 				} else {
 					response = "-unknown command";
 				}
@@ -417,5 +423,63 @@ public class SFTPServer {
 	public String STOPCommand() {
 		fileToSend = null;
 		return "+ok, RETR aborted";
+	}
+	
+	/*
+	 * Handles the STOR command
+	 */
+	public String STORCommand(String parameters) {
+		String filePath;
+		String type;
+		boolean exists;
+		
+		if (loginState != 1) {
+			return "-Please login";
+		}
+		
+		try { // Get the separate parameters
+			type = parameters.substring(0, 3);
+			filePath = parameters.substring(4, parameters.length());
+		} catch (Exception e) {
+			return "-Invalid parameters";
+		}
+		
+		File path = new File(currentDir + "/" + filePath); // Local files only. Absolute paths don't work
+		exists = path.exists();
+		
+		if (type.equals("NEW")) { // NEW type store
+			storeName = filePath;
+			if (exists) {
+				if (supportsGenerations) {
+					storeType = 2;
+					return "+File exists, will create new generation of file";
+				} else {
+					return "-File exists, but system doesn’t support generations";
+				}
+			} else {
+				storeType = 1;
+				return "+File does not exist, will create new file";
+			}
+		} else if (type.equals("OLD")) { // OLD type store
+			storeName = filePath;
+			if (exists) {
+				storeType = 3;
+				return "+Will write over old file";
+			} else {
+				storeType = 1;
+				return "+Will create new file";
+			}
+		} else if (type.equals("APP")) { // APP type store
+			storeName = filePath;
+			if (exists) {
+				storeType = 4;
+				return "+Will append to file";
+			} else {
+				storeType = 1;
+				return "+Will create file";
+			}
+		} else {
+			return "-Invalid parameters";
+		}
 	}
 }
