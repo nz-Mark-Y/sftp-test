@@ -21,6 +21,7 @@ public class SFTPServer {
 	private OutputStream outputStream;
 	private int storeType = 0; // 0 = no store requested, 1 = new file requested, 2 = new generation requested, 3 = overwrite file requested, 4 = append to file requested
 	private String storeName = null;
+	private long fileLength = 0;
 	
 	/* 
 	 * Constructor
@@ -43,6 +44,7 @@ public class SFTPServer {
 		PrintWriter outToClient = new PrintWriter(connectionSocket.getOutputStream(), true);
 		outputStream = connectionSocket.getOutputStream();
 		
+		// Check if server is up
 		if (activeServer) {
 			outToClient.println("+UoA-725 SFTP Service\0");
 		} else {
@@ -50,58 +52,86 @@ public class SFTPServer {
 		}
 		
 		while(open) {
-			// Get first 4 characters - this is the command
-			clientInput = inFromClient.readLine();
-			command = clientInput.substring(0, Math.min(clientInput.length(), 4));
-			
-			// Handle the specific command
-			if (command.equals("DONE")) {
-				open = false;
-				response = "+";
-			} else if (command.equals("SEND")) {
-				response = SENDCommand();
-			} else if (command.equals("STOP")) {
-				response = STOPCommand();	
-			} else {
-				// Get the parameters, truncate off the first 5 characters
+			// If we have a file to receive
+			if (fileLength != 0) {
+				// Create and read data into byte array
+				byte[] receivedFile = new byte[(int) fileLength];
+				for (int i=0; i<fileLength; i++) {
+					receivedFile[i] = (byte) connectionSocket.getInputStream().read();
+				}
 				try {
-					parameters = clientInput.substring(5, clientInput.length()-1);
+					// Write byte array to a file
+					FileOutputStream stream = new FileOutputStream(currentDir + "/" + storeName);
+				    stream.write(receivedFile);
+				    stream.close();
 				} catch (Exception e) {
-					outToClient.println("-unknown command\0");
+					// If it fails
+					storeName = null;
+					storeType = 0;
+					fileLength = 0;
+					outToClient.println("-Couldn’t save\0");
 					continue;
 				}
+				// Reply
+				outToClient.println("+Saved " + storeName + "\0");
+				storeName = null;
+				storeType = 0;
+				fileLength = 0;
+			} else {
+				// Get first 4 characters - this is the command
+				clientInput = inFromClient.readLine();
+				command = clientInput.substring(0, Math.min(clientInput.length(), 4));
 				
-				if (command.equals("USER")) {
-					response = USERCommand(parameters);
-				} else if (command.equals("ACCT")) {
-					response = ACCTCommand(parameters);
-				} else if (command.equals("PASS")) {
-					response = PASSCommand(parameters);
-				} else if (command.equals("TYPE")) {
-					response = TYPECommand(parameters);
-				} else if (command.equals("LIST")) {
-					response = LISTCommand(parameters);
-				} else if (command.equals("CDIR")) {
-					response = CDIRCommand(parameters);
-				} else if (command.equals("KILL")) {
-					response = KILLCommand(parameters);
-				} else if (command.equals("NAME")) {
-					response = NAMECommand(parameters);
-				} else if (command.equals("TOBE")) {
-					response = TOBECommand(parameters);
-				} else if (command.equals("RETR")) {
-					response = RETRCommand(parameters);
-				} else if (command.equals("STOR")) {
-					response = STORCommand(parameters);
+				// Handle the specific command
+				if (command.equals("DONE")) {
+					open = false;
+					response = "+";
+				} else if (command.equals("SEND")) {
+					response = SENDCommand();
+				} else if (command.equals("STOP")) {
+					response = STOPCommand();	
 				} else {
-					response = "-unknown command";
-				}
-			} 
-
-			// Write response
-			outToClient.println(response + "\0");
-		}
-		
+					// Get the parameters, truncate off the first 5 characters
+					try {
+						parameters = clientInput.substring(5, clientInput.length()-1);
+					} catch (Exception e) {
+						outToClient.println("-unknown command\0");
+						continue;
+					}
+					
+					// Select command
+					if (command.equals("USER")) {
+						response = USERCommand(parameters);
+					} else if (command.equals("ACCT")) {
+						response = ACCTCommand(parameters);
+					} else if (command.equals("PASS")) {
+						response = PASSCommand(parameters);
+					} else if (command.equals("TYPE")) {
+						response = TYPECommand(parameters);
+					} else if (command.equals("LIST")) {
+						response = LISTCommand(parameters);
+					} else if (command.equals("CDIR")) {
+						response = CDIRCommand(parameters);
+					} else if (command.equals("KILL")) {
+						response = KILLCommand(parameters);
+					} else if (command.equals("NAME")) {
+						response = NAMECommand(parameters);
+					} else if (command.equals("TOBE")) {
+						response = TOBECommand(parameters);
+					} else if (command.equals("RETR")) {
+						response = RETRCommand(parameters);
+					} else if (command.equals("STOR")) {
+						response = STORCommand(parameters);
+					} else if (command.equals("SIZE")) {
+						response = SIZECommand(parameters);
+					} else {
+						response = "-unknown command";
+					}
+				} 
+				// Write response
+				outToClient.println(response + "\0");
+			}	
+		}			
 		welcomeSocket.close();
 	}
 	
@@ -448,16 +478,18 @@ public class SFTPServer {
 		exists = path.exists();
 		
 		if (type.equals("NEW")) { // NEW type store
-			storeName = filePath;
 			if (exists) {
 				if (supportsGenerations) {
+					storeName = filePath;
 					storeType = 2;
 					return "+File exists, will create new generation of file";
 				} else {
+					storeType = 0;
 					return "-File exists, but system doesn’t support generations";
 				}
 			} else {
 				storeType = 1;
+				storeName = filePath;
 				return "+File does not exist, will create new file";
 			}
 		} else if (type.equals("OLD")) { // OLD type store
@@ -480,6 +512,41 @@ public class SFTPServer {
 			}
 		} else {
 			return "-Invalid parameters";
+		}
+	}
+	
+	/*
+	 * Handles the SIZE command
+	 */
+	public String SIZECommand(String sizeString) {
+		long size = 0;
+		
+		if (loginState != 1) {
+			return "-Please login";
+		}
+		
+		if (storeType == 0) {
+			return "-Please specify filename and store type";
+		}
+		
+		try { // Get the size
+			size = Long.parseLong(sizeString);
+		} catch (Exception e) {
+			// Any errors
+			storeType = 0;
+			storeName = null;
+			return "-Invalid parameters";
+		}
+		
+		// Check free space
+		File file = new File(currentDir);
+		if (size > file.getFreeSpace()) {
+			storeType = 0;
+			storeName = null;
+			return "-Not enough room, don’t send it";
+		} else {
+			fileLength = size;
+			return "+ok, waiting for file";
 		}
 	}
 }
