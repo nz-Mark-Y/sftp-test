@@ -61,9 +61,19 @@ public class SFTPServer {
 				}
 				try {
 					// Write byte array to a file
-					FileOutputStream stream = new FileOutputStream(currentDir + "/" + storeName);
-				    stream.write(receivedFile);
-				    stream.close();
+					if ((storeType == 1) || (storeType == 3)) {
+						FileOutputStream stream = new FileOutputStream(currentDir + "/" + storeName);
+					    stream.write(receivedFile);
+					    stream.close();
+					} else if (storeType == 2) {
+						FileOutputStream stream = new FileOutputStream(currentDir + "/" + "new_" + storeName);
+					    stream.write(receivedFile);
+					    stream.close();
+					} else {
+						FileOutputStream stream = new FileOutputStream(currentDir + "/" + storeName, true);
+					    stream.write(receivedFile);
+					    stream.close();
+					}
 				} catch (Exception e) {
 					// If it fails
 					storeName = null;

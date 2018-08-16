@@ -2,7 +2,7 @@
 public class SFTP_Protocol_Test {
 
 	public static void main(String argv[]) {
-		int port = 115;
+		int port = 118;
 		
 		// Start server in its own thread
 		Thread serverThread = new Thread(){
