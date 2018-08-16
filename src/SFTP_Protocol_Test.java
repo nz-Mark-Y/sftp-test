@@ -2,8 +2,9 @@
 public class SFTP_Protocol_Test {
 
 	public static void main(String argv[]) {
-		int port = 118;
+		int port = 115;
 		
+		// Start server in its own thread
 		Thread serverThread = new Thread(){
 			public void run(){
 				System.out.println("SFTP Server Starting");
@@ -16,6 +17,7 @@ public class SFTP_Protocol_Test {
 		};
 		serverThread.start();
 				
+		// Start client
 		System.out.println("SFTP Client Starting");
 		try {
 			SFTPClient myClient = new SFTPClient(port);

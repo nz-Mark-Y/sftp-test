@@ -7,6 +7,7 @@ public class JSONHandler {
 	public JSONHandler() throws Exception {
 		BufferedReader fileReader = new BufferedReader(new FileReader("login_data.txt"));
 		
+		// Read the json file
 		String text = "";
 		String line = null;
 		while((line = fileReader.readLine()) != null) {
